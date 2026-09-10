@@ -1,5 +1,7 @@
 // in c++ unordered map is implemented using hash table. In javascript, we can use object to implement hash map.
 
+import MinHeap from "../02_Min_Heap/min_heap.js";
+
 class GameSystem{
         constructor(){
                 this.players = new Map();
@@ -68,6 +70,30 @@ class GameSystem{
                 this.players.delete(id);
                 console.log("Player remove successfully");
         }
+
+
+        getTopK(k) {
+
+                const heap = new MinHeap((a, b) => a.rating - b.rating);
+
+                for (const player of this.players.values()) {
+
+                        heap.push(player);
+
+                        if (heap.size() > k) {
+                        heap.pop();
+                        }
+                }
+
+                const topKPlayers = [];
+
+                while (heap.size() > 0) {
+                        topKPlayers.push(heap.pop());
+                }
+
+                return topKPlayers.reverse();
+                }
+
 }
 
 
@@ -78,7 +104,7 @@ game.addPlayer(102,"DragonSlayer",2000);
 
 console.log(game.players);
 
-const readline = require('readline');
+import readline from "readline";
 
 const r1 = readline.createInterface({
         input: process.stdin,
@@ -102,3 +128,5 @@ r1.question("Enter player id to check if player exists: ", function(id){
 
 
 game.updateScore(101, 500);
+
+console.log(game.getTopK(2));

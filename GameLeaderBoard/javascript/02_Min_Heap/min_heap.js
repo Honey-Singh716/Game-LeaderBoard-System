@@ -1,76 +1,90 @@
-class MinHeap{
-    constructor(){
+class MinHeap {
+    constructor(compare) {
         this.heap = [];
+        this.compare = compare;
     }
-    
-    push(value){
+
+    push(value) {
         this.heap.push(value);
 
         let index = this.heap.length - 1;
 
-        while(index > 0){
-            let parentIndex =- Math.floor((index - 1)/2);
+        while (index > 0) {
+            let parentIndex = Math.floor((index - 1) / 2);
 
-            if(this.heap[index] >= this.heap[parentIndex]){
+            if (this.compare(this.heap[index], this.heap[parentIndex]) >= 0) {
                 break;
             }
 
-            [this.heap[index],this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
-            index = parentIndex; //bubbleup
+            [this.heap[index], this.heap[parentIndex]] =
+            [this.heap[parentIndex], this.heap[index]];
+
+            index = parentIndex;
         }
     }
 
-
-    peek(){ 
-        if(this.heap.length === 0){
+    peek() {
+        if (this.heap.length === 0) {
             return null;
         }
+
         return this.heap[0];
     }
 
-    pop(){
-        if(this.heap.length === 0){
+    pop() {
+        if (this.heap.length === 0) {
             return null;
         }
+
+        const removed = this.heap[0];
 
         this.heap[0] = this.heap[this.heap.length - 1];
         this.heap.pop();
 
         let index = 0;
 
-        while(true){
-            let leftChild = 2*index + 1;
-            let rightChild = 2*index + 2;
+        while (true) {
+            const leftChild = 2 * index + 1;
+            const rightChild = 2 * index + 2;
 
             let smallest = index;
 
-            if(leftChild < this.heap.length && this.heap[leftChild] < this.heap[[smallest]]){
+            if (
+                leftChild < this.heap.length &&
+                this.compare(
+                    this.heap[leftChild],
+                    this.heap[smallest]
+                ) < 0
+            ) {
                 smallest = leftChild;
             }
 
-            if(rightChild < this.heap.length && this.heap[rightChild] < this.heap[smallest]){
+            if (
+                rightChild < this.heap.length &&
+                this.compare(
+                    this.heap[rightChild],
+                    this.heap[smallest]
+                ) < 0
+            ) {
                 smallest = rightChild;
             }
 
-            if(smallest === index){
+            if (smallest === index) {
                 break;
             }
 
-            [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
-            index = smallest; //bubble down
+            [this.heap[index], this.heap[smallest]] =
+            [this.heap[smallest], this.heap[index]];
+
+            index = smallest;
         }
 
+        return removed;
+    }
+
+    size() {
+        return this.heap.length;
     }
 }
 
-
-const minHeap = new MinHeap();
-
-minHeap.push(5);
-minHeap.push(3);
-minHeap.push(8);
-
-console.log(minHeap.peek());
-minHeap.pop();
-
-console.log(minHeap.peek());
+export default MinHeap;
