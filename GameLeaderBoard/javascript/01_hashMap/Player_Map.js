@@ -92,7 +92,22 @@ class GameSystem{
                 }
 
                 return topKPlayers.reverse();
+        }
+
+        showTopK(k){
+                const playerTopK = this.getTopK(k);
+
+                let rank = 1;
+
+                console.log(`Top ${k} players:`);
+                console.log("--------------------");
+                for(const player of playerTopK){
+                        console.log(`Rank ${rank}: ${player.name} - ${player.rating}`);
+                        rank++;
                 }
+
+                console.log("--------------------");
+        }
 
 }
 
@@ -113,6 +128,11 @@ const r1 = readline.createInterface({
 
 game.showPlayer(101);
 
+
+
+game.updateScore(101, 500);
+game.showTopK(2);
+
 r1.question("Enter player id to check if player exists: ", function(id){
         id = Number(id);
 
@@ -125,8 +145,3 @@ r1.question("Enter player id to check if player exists: ", function(id){
         }
         r1.close();
 });
-
-
-game.updateScore(101, 500);
-
-console.log(game.getTopK(2));
