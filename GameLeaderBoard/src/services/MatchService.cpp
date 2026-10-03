@@ -59,16 +59,16 @@ std::optional<Match> MatchService::playMatch(
 
     switch (result) {
     case MatchResult::PLAYER_1_WIN:
-        ++playerService.findPlayer(player1Username)->wins;
-        ++playerService.findPlayer(*player2Username)->losses;
+        playerService.recordWin(player1Username);
+        playerService.recordLoss(*player2Username);
         break;
     case MatchResult::PLAYER_2_WIN:
-        ++playerService.findPlayer(player1Username)->losses;
-        ++playerService.findPlayer(*player2Username)->wins;
+        playerService.recordLoss(player1Username);
+        playerService.recordWin(*player2Username);
         break;
     case MatchResult::DRAW:
-        ++playerService.findPlayer(player1Username)->draws;
-        ++playerService.findPlayer(*player2Username)->draws;
+        playerService.recordDraw(player1Username);
+        playerService.recordDraw(*player2Username);
         break;
     }
 

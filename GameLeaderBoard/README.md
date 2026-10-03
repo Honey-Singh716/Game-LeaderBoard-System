@@ -1,63 +1,186 @@
-# Game Leaderboard System
+# 🎮 Game Leaderboard & Matchmaking System
 
-This C++ project models a small competitive-game backend. It preserves the V1
-leaderboard while adding an in-memory V2 match system. Players are identified
-by unique usernames; there are no numeric player IDs.
+> **C++ DSA-focused competitive game backend simulation built around real algorithmic problems, not arbitrary data-structure additions.**
 
-## Features
+## What it demonstrates
 
-- Register, find, view, and remove players
-- New players start with rating `400`
-- Calculated Win Rate from wins, losses, and draws
-- Top-K leaderboard and competition ranking by Win Rate
-- Automatic nearest-rating opponent selection
-- Random win, loss, or draw generation
-- Rating and win/loss/draw updates
-- In-memory match history
-- Console UI separated from domain models and services
+- Username-only player identity
+- Rating-based automatic matchmaking
+- Automatic WIN / LOSS / DRAW generation
+- Win Rate = `wins / (wins + losses + draws)`
+- Win-Rate leaderboard and competition ranking
+- Top-K using a size-K min heap
+- Custom AVL tree + subtree size for dynamic `O(log n)` ranking
+- Naive `O(n)` vs optimized ranking benchmark
+- Randomized correctness testing
+- CMake-based build
 
-## Architecture and DSA
+## DSA Design
 
-- `PlayerService` owns player state in an `unordered_map` for average `O(1)`
-  lookup, registration, and removal.
-- `LeaderboardService` scans players with a Win Rate min heap of size `K`,
-  giving `O(n log K)` Top-K retrieval and `O(K)` heap space.
-- `RankingService` uses competition ranking:
-  `1 + number of players with a strictly higher Win Rate`, in `O(n)`.
-`MatchmakingService` now uses a synchronized `std::multimap<int, std::string>`
-rating index for closest-opponent lookup in `O(log n)`. The
-`unordered_map<std::string, Player>` remains the source of truth. The index is
-updated on registration, removal, and match-driven rating changes.
+| Problem | Structure | Complexity |
+|---|---|---:|
+| Player lookup | `unordered_map<string, Player>` | Avg. `O(1)` |
+| Closest-rated opponent | `multimap<int, string>` + `lower_bound()` | `O(log n)` |
+| Top-K | Size-K min heap | `O(n log k)` |
+| Naive rank | Full scan | `O(n)` |
+| Optimized dynamic rank | Custom AVL + subtree size | `O(log n)` |
 
-Win Rate and rating are separate:
+The `unordered_map` is the **source of truth**. The multimap, AVL tree and heap are derived/query structures.
 
-- Win Rate is calculated as `wins / (wins + losses + draws)`.
-- A player with no matches has a `0%` Win Rate.
-- Match win: rating `+20`
-- Match loss: rating `-20`
-- Match draw: rating unchanged
+## Rating vs Win Rate
 
-The match service centralizes rating and statistics updates. The leaderboard and
-rank use Win Rate; rating is used only for matchmaking.
-
-## Build and run
-
-From `GameLeaderBoard/`:
+**Rating** is used for matchmaking:
 
 ```text
+Initial = 400
+Win  → +20
+Loss → -20
+Draw → 0
+```
+
+**Win Rate** is used for performance/ranking:
+
+```text
+Win Rate = wins / (wins + losses + draws)
+```
+
+No matches → `0%`.
+
+## Matchmaking
+
+The user enters only their username. The system automatically searches for the closest current rating.
+
+```text
+Rahul = 400
+Aman  = 390  → diff 10
+Karan = 410  → diff 10
+Ravi  = 520  → diff 120
+```
+
+No opponent or result is manually selected.
+
+## AVL Ranking
+
+The baseline ranking scans all players:
+
+```text
+O(n)
+```
+
+V3 adds a custom AVL tree storing:
+
+```text
+Win Rate Key
+Username
+Height
+Subtree Size
+```
+
+Rank query:
+
+```text
+O(log n)
+```
+
+Competition ranking is preserved, including ties.
+
+Win Rate is converted to a deterministic integer key:
+
+```cpp
+winRateKey =
+    static_cast<int>(std::lround(getWinRate() * 10000.0));
+```
+
+Examples:
+
+```text
+50%   → 5000
+72.5% → 7250
+80%   → 8000
+```
+
+## Benchmark
+
+The benchmark performs **1,000 rank queries** per implementation.
+
+| Players | Naive | AVL | Approx. Speedup |
+|---:|---:|---:|---:|
+| 1,000 | 676,877 µs | 210 µs | ~3,223× |
+| 10,000 | 7,251,198 µs | 274 µs | ~26,464× |
+| 100,000 | 106,131,741 µs | 442 µs | ~240,117× |
+
+The important theoretical result is:
+
+```text
+Naive → O(n)
+AVL   → O(log n)
+```
+
+> Benchmark values are environment-dependent and should not be treated as universal hardware guarantees.
+
+## Testing
+
+Covers player/match behavior plus AVL correctness:
+
+- Registration, lookup and removal
+- Win / Loss / Draw
+- Win Rate edge cases
+- Closest-rating matchmaking
+- Self-match / no-opponent cases
+- AVL rotations and deletion cases
+- Duplicate Win Rates
+- Competition ranking
+- Subtree-size and balance invariants
+- Randomized **Naive Rank == AVL Rank** verification
+
+## Architecture
+
+```text
+ConsoleUI
+    ↓
+Services
+├── PlayerService
+├── MatchService
+├── MatchmakingService
+├── LeaderboardService
+└── RankingService
+    ↓
+Algorithms / Models
+├── AVLRankTree
+├── MinHeap
+├── Player
+├── Match
+└── MatchResult
+    ↓
+In-memory state
+```
+
+## Build
+
+```powershell
 cmake -S . -B build
 cmake --build build
 ctest --test-dir build -C Debug --output-on-failure
-build\Debug\game_leaderboard.exe
+.\build\Debug\game_leaderboard.exe
 ```
 
-On single-configuration generators, the executable may be directly under
-`build/`. The project can also be compiled with `g++` using the sources listed
-in `CMakeLists.txt`.
+## Current Scope
 
-## Progress
+The project is intentionally **in-memory and DSA-first**.
 
-- V1 Basic Leaderboard: completed
-- V2 Match System: completed
-- Future: event-based scoring, matchmaking performance measurement, persistence,
-  and API boundaries only when justified by requirements
+Not included yet:
+
+```text
+PostgreSQL
+Redis
+REST API
+React
+Microservices
+Distributed matchmaking
+```
+
+These should be introduced only when a real scalability or product requirement justifies them.
+
+## Interview Pitch
+
+> I built a C++ competitive-game backend using different DSA structures for different workloads: an unordered_map for average O(1) player lookup, a multimap for O(log n) closest-rating matchmaking, a size-K min heap for O(n log k) Top-K retrieval, and a custom AVL tree with subtree sizes to reduce dynamic rank queries from O(n) to O(log n). I also kept the naive algorithm as a correctness baseline and benchmarked both implementations.

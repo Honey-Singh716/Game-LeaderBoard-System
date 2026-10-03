@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(GAME_SOURCES
+    src/algorithms/AVLRankTree.cpp
     src/models/Match.cpp
     src/models/MatchResult.cpp
     src/models/Player.cpp
@@ -28,6 +29,12 @@ add_executable(game_leaderboard_tests
     tests/test_main.cpp
 )
 target_include_directories(game_leaderboard_tests PRIVATE include)
+
+add_executable(ranking_benchmark
+    ${GAME_SOURCES}
+    benchmarks/ranking_benchmark.cpp
+)
+target_include_directories(ranking_benchmark PRIVATE include)
 
 enable_testing()
 add_test(NAME game_leaderboard_tests COMMAND game_leaderboard_tests)

@@ -27,6 +27,7 @@ bool PlayerService::registerPlayer(const std::string& username) {
     }
     players.emplace(username, Player{username});
     playersByRating.emplace(400, username);
+    rankingTree.insert(0, username);
     return true;
 }
 
@@ -61,6 +62,42 @@ bool PlayerService::applyRatingChange(
     return true;
 }
 
+bool PlayerService::recordWin(const std::string& username) {
+    Player* player = findPlayer(username);
+    if (player == nullptr) {
+        return false;
+    }
+    const int oldBasisPoints = player->getWinRateBasisPoints();
+    rankingTree.erase(oldBasisPoints, username);
+    ++player->wins;
+    rankingTree.insert(player->getWinRateBasisPoints(), username);
+    return true;
+}
+
+bool PlayerService::recordLoss(const std::string& username) {
+    Player* player = findPlayer(username);
+    if (player == nullptr) {
+        return false;
+    }
+    const int oldBasisPoints = player->getWinRateBasisPoints();
+    rankingTree.erase(oldBasisPoints, username);
+    ++player->losses;
+    rankingTree.insert(player->getWinRateBasisPoints(), username);
+    return true;
+}
+
+bool PlayerService::recordDraw(const std::string& username) {
+    Player* player = findPlayer(username);
+    if (player == nullptr) {
+        return false;
+    }
+    const int oldBasisPoints = player->getWinRateBasisPoints();
+    rankingTree.erase(oldBasisPoints, username);
+    ++player->draws;
+    rankingTree.insert(player->getWinRateBasisPoints(), username);
+    return true;
+}
+
 bool PlayerService::removePlayer(const std::string& username) {
     auto player = players.find(username);
     if (player == players.end()) {
@@ -74,8 +111,22 @@ bool PlayerService::removePlayer(const std::string& username) {
             break;
         }
     }
+    rankingTree.erase(
+        player->second.getWinRateBasisPoints(),
+        username);
     players.erase(player);
     return true;
+}
+
+int PlayerService::findOptimizedRank(const std::string& username) const {
+    const Player* player = findPlayer(username);
+    return player == nullptr
+               ? -1
+               : rankingTree.rankForWinRate(player->getWinRateBasisPoints());
+}
+
+bool PlayerService::validateRankingIndex() const {
+    return rankingTree.size() == players.size() && rankingTree.validate();
 }
 
 std::optional<std::string> PlayerService::findClosestRatedOpponent(

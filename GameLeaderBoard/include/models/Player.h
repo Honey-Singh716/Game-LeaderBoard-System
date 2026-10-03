@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cmath>
 
 struct Player {
     std::string username;
@@ -18,5 +19,9 @@ struct Player {
         return totalMatches == 0
                    ? 0.0
                    : static_cast<double>(wins) / totalMatches;
+    }
+
+    int getWinRateBasisPoints() const {
+        return static_cast<int>(std::lround(getWinRate() * 10000.0));
     }
 };

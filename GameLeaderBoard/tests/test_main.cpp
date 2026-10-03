@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <random>
 #include <set>
 
 void testPlayerService() {
@@ -35,12 +36,16 @@ void testLeaderboardAndRanking() {
     players.registerPlayer("One");
     players.registerPlayer("Two");
     players.registerPlayer("Three");
-    players.findPlayer("One")->wins = 8;
-    players.findPlayer("One")->losses = 2;
-    players.findPlayer("Two")->wins = 5;
-    players.findPlayer("Two")->losses = 5;
-    players.findPlayer("Three")->wins = 5;
-    players.findPlayer("Three")->losses = 5;
+    for (int i = 0; i < 8; ++i) {
+        players.recordWin("One");
+    }
+    for (int i = 0; i < 2; ++i) {
+        players.recordLoss("One");
+        players.recordWin("Two");
+        players.recordLoss("Two");
+        players.recordWin("Three");
+        players.recordLoss("Three");
+    }
 
     LeaderboardService leaderboard(players);
     RankingService ranking(players);
@@ -53,8 +58,11 @@ void testLeaderboardAndRanking() {
     assert(ranking.findRank("Two") == 2);
     assert(ranking.findRank("Three") == 2);
     assert(ranking.findRank("Missing") == -1);
+    assert(ranking.findNaiveRank("One") == ranking.findOptimizedRank("One"));
+    assert(players.validateRankingIndex());
     players.removePlayer("One");
     assert(leaderboard.getTopK(10).size() == 2);
+    assert(players.validateRankingIndex());
 }
 
 void testMatches() {
@@ -76,6 +84,7 @@ void testMatches() {
 
     const Player* one = players.findPlayer("One");
     const Player* two = players.findPlayer("Two");
+    assert(players.validateRankingIndex());
     assert(one->wins + one->losses + one->draws == 1);
     assert(two->wins + two->losses + two->draws == 1);
     assert(one->rating >= 0);
@@ -105,6 +114,68 @@ void testWinRateCalculations() {
     player.losses = 2;
     player.draws = 0;
     assert(player.getWinRate() == 0.8);
+}
+
+void testAVLTreeOperations() {
+    for (const auto& rates : {
+             std::vector<int>{3000, 2000, 1000},
+             std::vector<int>{1000, 2000, 3000},
+             std::vector<int>{3000, 1000, 2000},
+             std::vector<int>{1000, 3000, 2000}}) {
+        AVLRankTree tree;
+        for (int rate : rates) {
+            tree.insert(rate, std::to_string(rate));
+        }
+        assert(tree.size() == 3);
+        assert(tree.validate());
+        assert(tree.rankForWinRate(3000) == 1);
+        assert(tree.rankForWinRate(2000) == 2);
+        assert(tree.rankForWinRate(1000) == 3);
+    }
+
+    AVLRankTree tree;
+    tree.insert(5000, "A");
+    tree.insert(5000, "B");
+    tree.insert(5000, "C");
+    tree.insert(4000, "D");
+    assert(tree.rankForWinRate(5000) == 1);
+    assert(tree.rankForWinRate(4000) == 4);
+    assert(tree.erase(5000, "B"));
+    assert(tree.erase(5000, "A"));
+    assert(tree.erase(5000, "C"));
+    assert(tree.erase(4000, "D"));
+    assert(tree.size() == 0);
+    assert(tree.validate());
+}
+
+void testDynamicRankingAgainstNaive() {
+    PlayerService players;
+    constexpr int playerCount = 250;
+    for (int i = 0; i < playerCount; ++i) {
+        const std::string username = "User" + std::to_string(i);
+        assert(players.registerPlayer(username));
+        for (int win = 0; win < i % 9; ++win) {
+            players.recordWin(username);
+        }
+        for (int loss = i % 9; loss < 12; ++loss) {
+            players.recordLoss(username);
+        }
+        if (i % 4 == 0) {
+            players.recordDraw(username);
+        }
+    }
+
+    RankingService ranking(players);
+    for (int i = 0; i < playerCount; ++i) {
+        const std::string username = "User" + std::to_string(i);
+        assert(ranking.findNaiveRank(username) ==
+               ranking.findOptimizedRank(username));
+    }
+    assert(players.validateRankingIndex());
+
+    assert(players.removePlayer("User100"));
+    assert(ranking.findOptimizedRank("User100") == -1);
+    assert(players.validateRankingIndex());
 }
 
 void testOptimizedMatchmaking() {
@@ -155,6 +226,8 @@ int main() {
     testLeaderboardAndRanking();
     testMatches();
     testWinRateCalculations();
+    testAVLTreeOperations();
+    testDynamicRankingAgainstNaive();
     testOptimizedMatchmaking();
     testRandomResultTypes();
     std::cout << "All tests passed.\n";
